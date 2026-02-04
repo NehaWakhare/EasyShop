@@ -347,5 +347,8 @@ kind create cluster --name easyshop
 kubectl apply -f kubernetes/
 ```
 ## change config Map and Ingress Public Ip as your ip address
+ConfigMap update केला
+yamlNEXT_PUBLIC_API_URL: "http://easyshop.3.14.249.19.nip.io/api"   
+NEXTAUTH_URL: "http://easyshop.3.14.249.19.nip.io"
 ## Kind-specific Ingress Controller install
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v
