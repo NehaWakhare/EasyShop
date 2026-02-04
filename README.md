@@ -346,3 +346,4 @@ kind create cluster --name easyshop
 # Deploy the application locally
 kubectl apply -f kubernetes/
 ```
+## change config Map and Ingress Public Ip as your ip address
