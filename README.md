@@ -347,3 +347,5 @@ kind create cluster --name easyshop
 kubectl apply -f kubernetes/
 ```
 ## change config Map and Ingress Public Ip as your ip address
+## Kind-specific Ingress Controller install
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v
