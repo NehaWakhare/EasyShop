@@ -352,3 +352,229 @@ yamlNEXT_PUBLIC_API_URL: "http://easyshop.3.14.249.19.nip.io/api"
 NEXTAUTH_URL: "http://easyshop.3.14.249.19.nip.io"
 ## Kind-specific Ingress Controller install
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v
+## install  Grafana & Prometheus
+ Install HELM
+curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+chmod 700 get_helm.sh
+./get_helm.sh
+
+ kind (Kubernetes in Docker)
+bash# Install kind
+curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+chmod +x ./kind
+sudo mv ./kind /usr/local/bin/kind
+
+# Create a cluster
+kind create cluster --name my-cluster
+
+# Verify cluster
+kubectl cluster-info
+kubectl get nodes
+
+## 11. Install Kube Prometheus Stack = install prometheus , grafana , node-exporter
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo add stable https://charts.helm.sh/stable
+helm repo update
+kubectl create namespace monitoring
+helm install kind-prometheus prometheus-community/kube-prometheus-stack --namespace monitoring --set prometheus.service.nodePort=30000 --set prometheus.service.type=NodePort --set grafana.service.nodePort=31000 --set grafana.service.type=NodePort --set alertmanager.service.nodePort=32000 --set alertmanager.service.type=NodePort --set prometheus-node-exporter.service.nodePort=32001 --set prometheus-node-exporter.service.type=NodePort
+kubectl get svc -n monitoring
+kubectl get namespace
+
+## 12. Prometheus Queries
+sum (rate (container_cpu_usage_seconds_total{namespace="default"}[1m])) / sum (machine_cpu_cores) * 100
+sum (container_memory_usage_bytes{namespace="default"}) by (pod)
+sum(rate(container_network_receive_bytes_total{namespace="default"}[5m])) by (pod)
+sum(rate(container_network_transmit_bytes_total{namespace="default"}[5m])) by (pod)
+
+  ## grafana che credential command = username=admin   pass = cmd ne yeyil
+ kubectl get secret kind-prometheus-grafana -n monitoring -o jsonpath='{.data.admin-password}' | base64 -d
+ 
+Password: 1JuEp6Pvk2zG1YmrXSxbjsyTzqt0DoFEk6RHwmXj
+username: admin
+## Acesss Grafana and prometheus
+
+ # Check contact points
+
+kubectl get pods -n monitoring -l app.kubernetes.io/name=grafana
+
+# Access Grafana
+
+echo "Grafana URL: http://grafana.3.14.249.19.nip.io"
+
+echo "Username: admin"
+
+kubectl get secret -n monitoring prometheus-grafana -o jsonpath="{.data.admin-password}" | base64 --decodeा
+
+bash# SMTP password verify करा
+
+kubectl get deployment prometheus-grafana -n monitoring -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="GF_SMTP_PASSWORD")].value}'
+
+ा
+
+curl ifconfig.me
+
+echo
+
+Step 2: Update Ingress (EasyShop)
+
+bashcat > 10-ingress.yaml <<EOF
+
+apiVersion: networking.k8s.io/v1
+
+kind: Ingress
+
+metadata:
+
+  name: easyshop-ingress
+
+  namespace: easyshop
+
+  annotations:
+
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+
+spec:
+
+  ingressClassName: nginx
+
+  rules:
+
+  - host: easyshop.18.118.140.151.nip.io   ===== ip taka tumcha
+
+    http:
+
+      paths:
+
+      - path: /
+
+        pathType: Prefix
+
+        backend:
+
+          service:
+
+            name: easyshop-service
+
+            port:
+
+              number: 80
+
+EOF
+
+kubectl apply -f 10-ingress.yaml
+
+Step 3: Update ConfigMap (EasyShop)
+
+bashcat > 04-configmap.yaml <<EOF
+
+apiVersion: v1
+
+kind: ConfigMap
+
+metadata:
+
+  name: easyshop-config
+
+  namespace: easyshop
+
+data:
+
+  MONGODB_URI: "mongodb://mongodb-0.mongodb-service.easyshop.svc.cluster.local:27017/easyshop"
+
+  REDIS_URI: "redis://easyshop-redis.easyshop.svc.cluster.local:6379"
+
+  NODE_ENV: "production"
+
+  NEXT_PUBLIC_API_URL: "http://easyshop.18.118.140.151.nip.io/api"     ==== ip taka 
+
+  NEXTAUTH_URL: "http://easyshop.18.118.140.151.nip.io"           ==== ip taka 
+
+  NEXTAUTH_SECRET: "d+TeXQKeHVaT765J79c93a+RoOu1hRn/IVzUKXvrHHk="
+
+  JWT_SECRET: "49d07d71fdd2f07ea90a6c6d67b054ee17895088441f9eed31b87e8e7fa7c0f6"
+
+EOF
+
+kubectl apply -f 04-configmap.yaml
+
+kubectl rollout restart deployment easyshop -n easyshop
+
+Step 4: Update Grafana Ingress
+
+bashcat > grafana-ingress.yaml <<EOF
+
+apiVersion: networking.k8s.io/v1
+
+kind: Ingress
+
+metadata:
+
+  name: grafana-ingress
+
+  namespace: monitoring
+
+  annotations:
+
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+
+spec:
+
+  ingressClassName: nginx
+
+  rules:
+
+  - host: grafana.18.118.140.151.nip.io           ==== ip taka 
+
+    http:
+
+      paths:
+
+      - path: /
+
+        pathType: Prefix
+
+        backend:
+
+          service:
+
+            name: prometheus-grafana
+
+            port:
+
+              number: 80
+
+EOF
+
+kubectl apply -f grafana-ingress.yaml
+
+Step 5: Update Grafana Server URL
+
+bashkubectl set env deployment/prometheus-grafana -n monitoring \
+
+  GF_SERVER_ROOT_URL=http://grafana.18.118.140.151.nip.io      ==== ip taka 
+
+Step 6: Verify Everything
+
+bash# Check all ingresses
+
+kubectl get ing -A
+
+# Check EasyShop
+
+curl -I http://easyshop.18.118.140.151.nip.io      ==== ip taka 
+
+# Check Grafana
+
+curl -I http://grafana.18.118.140.151.nip.io         ==== ip taka 
+
+Updated URLs:
+
+✅ EasyShop: http://easyshop.18.118.140.151.nip.io
+
+✅ Grafana: http://grafana.18.118.140.151.nip.io
+
+✅ Prometheus: http://prometheus.18.118.140.151.nip.io (जर ingress असेल तर)
+
+
